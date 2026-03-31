@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Rinyo X 0dte Flow Analyzer v2</title>
+<title>Rinyo X 0DTE Flow Analyzer v2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
 
@@ -110,6 +110,24 @@ body{font-family:'IBM Plex Sans Thai','JetBrains Mono',sans-serif;background:var
 .risk-item{display:flex;gap:8px;padding:4px 0;font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--text2);line-height:1.5}
 .risk-item .ri-icon{color:var(--orange);flex-shrink:0;font-size:.72rem}
 
+/* Trend badge */
+.trend-badge{display:inline-block;padding:4px 12px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:700;letter-spacing:.04em;margin-bottom:10px}
+.trend-badge.sbuy{background:rgba(34,197,94,.18);color:#4ade80;border:1px solid rgba(34,197,94,.3)}
+.trend-badge.buy{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
+.trend-badge.ssell{background:rgba(239,68,68,.18);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+.trend-badge.sell{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+.trend-badge.ntrl{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.trend-badge.avoid{background:rgba(100,116,139,.12);color:#94a3b8;border:1px solid rgba(100,116,139,.2)}
+
+/* TP/SL zone bar */
+.zone-bar{margin:10px 0 4px;position:relative;height:32px;background:var(--bg-input);border-radius:6px;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:.58rem}
+.zone-seg{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;font-weight:600;color:#fff;overflow:hidden;white-space:nowrap}
+.zone-sl{background:rgba(239,68,68,.35)}
+.zone-entry{background:rgba(59,130,246,.3);border-left:2px solid var(--cyan);border-right:2px solid var(--cyan)}
+.zone-tp{background:rgba(34,197,94,.3)}
+.zone-labels{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--muted);margin-top:2px}
+.zone-src{font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--muted);margin-top:4px;text-align:right;font-style:italic}
+
 /* Gamma */
 .gn{font-family:'JetBrains Mono',monospace;font-size:.64rem;color:var(--text2);line-height:1.6}
 .gn .hl{color:var(--cyan);font-weight:500}
@@ -120,7 +138,7 @@ body{font-family:'IBM Plex Sans Thai','JetBrains Mono',sans-serif;background:var
 <body>
 <div class="ct">
   <div class="hdr">
-    <h1>Rinyo X 0DTE FLOW ANALYZER</h1>
+    <h1>Rinyo 0DTE FLOW ANALYZER</h1>
     <div class="sub">SPX/SPXW Options → ES Futures Signal</div>
   </div>
 
@@ -174,6 +192,7 @@ body{font-family:'IBM Plex Sans Thai','JetBrains Mono',sans-serif;background:var
   <button class="btn btn-go" onclick="analyze()">ANALYZE</button>
 
   <div class="res" id="results">
+    <div id="trendWrap" style="text-align:center;margin-bottom:10px"><span class="trend-badge" id="trendBadge"></span></div>
     <div class="vb" id="vb"><div class="vh" id="vh"></div><div class="vm" id="vm"></div></div>
     <div class="fgrid" id="fgrid"></div>
     <div class="wrb" id="wrb">
@@ -315,13 +334,44 @@ function analyze(){
   else if(pcr>0.55){direction='Short';dirClass='short'}
   else if(pcr<0.45){direction='Long';dirClass='long'}
   else{
-    if(hasSpxYest&&spxYest>0.3){direction='Long';dirClass='long'}
-    else if(hasSpxYest&&spxYest<-0.3){direction='Short';dirClass='short'}
-    else{direction='Neutral';dirClass='short'}
+    // PCR neutral (0.45-0.55) → use tiebreakers
+    let dirScore=0;
+
+    // Tiebreaker 1: SPX Yesterday
+    if(hasSpxYest&&spxYest>0.3) dirScore+=1;
+    else if(hasSpxYest&&spxYest<-0.3) dirScore-=1;
+
+    // Tiebreaker 2: Wall proximity — closer wall = price likely moves toward it
+    if(distPut!==null&&distCall!==null){
+      if(distCall<distPut) dirScore+=0.5;  // closer to call wall → bullish
+      else if(distPut<distCall) dirScore-=0.5;  // closer to put wall → bearish
+    } else if(distCall!==null&&distPut===null){
+      dirScore+=0.5;  // only call wall → likely bullish target
+    } else if(distPut!==null&&distCall===null){
+      dirScore-=0.5;  // only put wall → likely bearish target
+    }
+
+    // Tiebreaker 3: PCR micro-skew (0.50-0.55 leans short, 0.45-0.50 leans long)
+    if(pcr>0.52) dirScore-=0.3;
+    else if(pcr<0.48) dirScore+=0.3;
+
+    // Tiebreaker 4: Vol Chg + slight PCR lean
+    if(hasVolChg&&volChg>2&&pcr>=0.50) dirScore-=0.3;  // vol spike + slight put lean
+    if(hasVolChg&&volChg>2&&pcr<0.50) dirScore+=0.3;   // vol spike + slight call lean
+
+    if(dirScore>0){direction='Long';dirClass='long'}
+    else if(dirScore<0){direction='Short';dirClass='short'}
+    else{
+      // True neutral — pick based on nearest wall if available
+      if(distCall!==null&&(distPut===null||distCall<=distPut)){direction='Long';dirClass='long'}
+      else if(distPut!==null){direction='Short';dirClass='short'}
+      else{direction='Neutral';dirClass='short'}
+    }
   }
 
   // === TP / SL ===
   let tp=null, sl=null, rr=null, size=null, entryZone=es, tpLevel=null, slLevel=null, distToWall=null, nearestWallUsed=null;
+  let tpSlSource='';
 
   if(hasWalls&&direction!=='Neutral'){
     nearestWallUsed=direction==='Long'?nearestCall:nearestPut;
@@ -342,15 +392,28 @@ function analyze(){
         size='Reduce';
       }
       tp=Math.max(tp,15);sl=Math.max(sl,8);
-      rr=(tp/sl).toFixed(1);
-      tpLevel=direction==='Long'?es+tp:es-tp;
-      slLevel=direction==='Long'?es-sl:es+sl;
-
+      tpSlSource='Wall-based';
       if(distToWall>50) risks.push(`ระยะไกลจาก Wall (${distToWall.toFixed(0)}pts) — price อาจไม่ถึง TP, ลด size`);
     }
   }
 
-  if(!hasWalls) risks.push('ไม่ได้ใส่ Wall — ไม่สามารถคำนวณ TP/SL ได้ ใช้เป็น directional signal เท่านั้น');
+  // Fallback: use 1SD Range when no walls
+  if(tp===null&&direction!=='Neutral'){
+    tp=Math.round(sdRange*0.35);
+    sl=Math.round(sdRange*0.13);
+    tp=Math.max(tp,15);sl=Math.max(sl,8);
+    size=sdRange>80?'Normal':'Reduce';
+    tpSlSource='1SD fallback (no Wall)';
+    risks.push('TP/SL คำนวณจาก 1SD Range — accuracy ต่ำกว่าใช้ Wall ควรใส่ Put/Call Wall ด้วย');
+  }
+
+  if(tp!==null&&sl!==null){
+    rr=(tp/sl).toFixed(1);
+    tpLevel=direction==='Long'?es+tp:es-tp;
+    slLevel=direction==='Long'?es-sl:es+sl;
+  }
+
+  if(!hasWalls&&direction!=='Neutral') risks.push('ไม่ได้ใส่ Wall — TP/SL เป็น estimate จาก 1SD เท่านั้น');
 
   // Wall width risk
   if(nearestPut!==null&&nearestCall!==null){
@@ -384,8 +447,39 @@ function analyze(){
   else if(scoreNorm>=1.5){verdict='REDUCE';verdictClass='reduce';verdictEmoji='🟡'}
   else{verdict='SKIP';verdictClass='skip';verdictEmoji='⛔'}
 
+  // === TREND LABEL ===
+  let trendLabel, trendClass;
+  if(verdict==='SKIP'||direction==='Neutral'){
+    trendLabel='AVOID'; trendClass='avoid';
+  } else {
+    const pcrStrength=Math.abs(pcr-0.5)*2;
+    const volChgBoost=hasVolChg&&volChg>1?1:hasVolChg&&volChg>0?0.5:0;
+    const trendScore=scoreNorm*0.5+pcrStrength*2+volChgBoost;
+
+    if(direction==='Long'){
+      if(trendScore>=3.5){trendLabel='STRONG BUY';trendClass='sbuy'}
+      else if(trendScore>=2){trendLabel='BUY';trendClass='buy'}
+      else{trendLabel='WEAK BUY';trendClass='ntrl'}
+    } else {
+      if(trendScore>=3.5){trendLabel='STRONG SELL';trendClass='ssell'}
+      else if(trendScore>=2){trendLabel='SELL';trendClass='sell'}
+      else{trendLabel='WEAK SELL';trendClass='ntrl'}
+    }
+    if(verdict==='REDUCE'){
+      if(trendLabel.startsWith('STRONG')){
+        trendLabel=direction==='Long'?'BUY':'SELL';
+        trendClass=direction==='Long'?'buy':'sell';
+      }
+    }
+  }
+
   // === RENDER ===
   const R=document.getElementById('results');R.classList.add('show');
+
+  // Trend badge
+  const tb=document.getElementById('trendBadge');
+  tb.textContent=trendLabel;
+  tb.className='trend-badge '+trendClass;
 
   // Verdict banner
   const vb=document.getElementById('vb');vb.className='vb '+verdictClass;
@@ -398,10 +492,10 @@ function analyze(){
     meta=`PCR: ${pcr.toFixed(2)}${hasVolChg?' | VolChg: '+(volChg>0?'+':'')+volChg.toFixed(2):''}${hasVolSettle?' | '+f1_regime:''}<br>Factors: ${passCount}/${totalFactors} pass (${skippedCount} skipped)`;
   } else if(tp!==null){
     headline=`${verdictEmoji} ${direction} ES @ ${entryZone.toFixed(2)} | TP ${tpLevel.toFixed(2)} (+${tp}pts) | SL ${slLevel.toFixed(2)} (-${sl}pts)`;
-    meta=`${verdict} | WR ~${wr}% | R:R ${rr}:1 | Size: ${size} | Factors ${passCount}/${totalFactors}`;
+    meta=`${verdict} | ${trendLabel} | WR ~${wr}% | R:R ${rr}:1 | Size: ${size} | Factors ${passCount}/${totalFactors}`;
   } else {
-    headline=`${verdictEmoji} ${direction} ES @ ${entryZone.toFixed(2)} — No Wall → TP/SL N/A`;
-    meta=`${verdict} | WR ~${wr}% | Factors ${passCount}/${totalFactors}`;
+    headline=`${verdictEmoji} ${direction} ES @ ${entryZone.toFixed(2)} — direction only`;
+    meta=`${verdict} | ${trendLabel} | WR ~${wr}% | Factors ${passCount}/${totalFactors}`;
   }
   document.getElementById('vh').innerHTML=headline;
   document.getElementById('vm').innerHTML=meta;
@@ -426,7 +520,7 @@ function analyze(){
   fill.style.width=wr+'%';
   fill.style.background=wr>=68?'var(--green)':wr>=60?'var(--yellow)':'var(--red)';
 
-  // Trade setup
+  // Trade setup — always show if not SKIP
   const sc=document.getElementById('setupCard');
   if(verdict==='SKIP'&&tp===null){sc.style.display='none'}
   else{
@@ -437,11 +531,40 @@ function analyze(){
       rows.push(['SL',`${slLevel.toFixed(2)} (-${sl}pts)`,'sl']);
       rows.push(['R:R',`${rr}:1`,'']);
       rows.push(['Size',size,'']);
-      rows.push(['Dist to Wall',`${distToWall.toFixed(0)}pts`,''
-      ]);
+      if(distToWall!==null) rows.push(['Dist to Wall',`${distToWall.toFixed(0)}pts`,'']);
     }
     rows.push(['Conviction','Medium (Vol only)','']);
-    document.getElementById('setupRows').innerHTML=rows.map(r=>`<div class="row"><span class="rl">${r[0]}</span><span class="rv ${r[2]}">${r[1]}</span></div>`).join('');
+
+    // Zone bar visual
+    let zoneBarHtml='';
+    if(tp!==null&&sl!==null){
+      const totalSpan=tp+sl;
+      const slPct=(sl/totalSpan)*100;
+      const tpPct=(tp/totalSpan)*100;
+      if(direction==='Long'){
+        zoneBarHtml=`
+          <div class="zone-bar">
+            <div class="zone-seg zone-sl" style="left:0;width:${slPct}%">SL -${sl}</div>
+            <div class="zone-seg zone-entry" style="left:${slPct}%;width:2px"></div>
+            <div class="zone-seg zone-tp" style="left:${slPct}%;width:${tpPct}%">TP +${tp}</div>
+          </div>
+          <div class="zone-labels"><span>${slLevel.toFixed(0)}</span><span>▲ ${entryZone.toFixed(0)}</span><span>${tpLevel.toFixed(0)}</span></div>
+          <div class="zone-src">${tpSlSource}</div>`;
+      } else {
+        zoneBarHtml=`
+          <div class="zone-bar">
+            <div class="zone-seg zone-tp" style="left:0;width:${tpPct}%">TP +${tp}</div>
+            <div class="zone-seg zone-entry" style="left:${tpPct}%;width:2px"></div>
+            <div class="zone-seg zone-sl" style="left:${tpPct}%;width:${slPct}%">SL -${sl}</div>
+          </div>
+          <div class="zone-labels"><span>${tpLevel.toFixed(0)}</span><span>▼ ${entryZone.toFixed(0)}</span><span>${slLevel.toFixed(0)}</span></div>
+          <div class="zone-src">${tpSlSource}</div>`;
+      }
+    }
+
+    document.getElementById('setupRows').innerHTML=
+      rows.map(r=>`<div class="row"><span class="rl">${r[0]}</span><span class="rv ${r[2]}">${r[1]}</span></div>`).join('')
+      +zoneBarHtml;
   }
 
   // Wall map
