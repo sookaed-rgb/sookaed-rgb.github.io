@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rinyo X 0dte Flow Analyzer v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg: #080c14;
+  --bg-card: #0f1623;
+  --bg-input: #151d2e;
+  --border: #1c2a3e;
+  --border-focus: #3b82f6;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --muted: #5a6a80;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --cyan: #06b6d4;
+  --orange: #f97316;
+  --purple: #a78bfa;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:14px;-webkit-text-size-adjust:100%}
+body{font-family:'IBM Plex Sans Thai','JetBrains Mono',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+.ct{max-width:540px;margin:0 auto;padding:12px}
+
+/* Header */
+.hdr{text-align:center;padding:14px 0 10px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.hdr h1{font-family:'JetBrains Mono',monospace;font-size:1.05rem;font-weight:700;letter-spacing:.06em}
+.hdr .sub{font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
+
+/* Form */
+.form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sec{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:5px 0 2px;border-top:1px solid var(--border);margin-top:2px;grid-column:1/-1}
+.sec:first-child{border-top:none;margin-top:0}
+.fg{display:flex;flex-direction:column}
+.fg.fw{grid-column:1/-1}
+.fg label{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.07em}
+.fg label .opt{color:#4a5568;font-weight:300;text-transform:none;letter-spacing:0;font-size:.56rem}
+.fg input{background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:9px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.88rem;font-weight:500;transition:border-color .15s;width:100%}
+.fg input:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 2px rgba(59,130,246,.12)}
+.fg input::placeholder{color:#3d4a5c;font-weight:300;font-size:.72rem}
+
+/* Buttons */
+.btn{width:100%;padding:12px;border:none;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:all .15s;text-transform:uppercase}
+.btn-go{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;margin-bottom:14px}
+.btn-go:active{transform:scale(.98);background:linear-gradient(135deg,#2563eb,#1d4ed8)}
+.btn-reset{background:transparent;border:1px solid var(--border);color:var(--muted);margin-bottom:20px;font-size:.7rem}
+.btn-reset:active{background:var(--bg-input)}
+
+/* Results */
+.res{display:none}.res.show{display:block}
+
+/* Verdict */
+.vb{padding:14px 16px;border-radius:10px;margin-bottom:12px;border:1px solid}
+.vb.enter{background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(34,197,94,.02));border-color:rgba(34,197,94,.3)}
+.vb.skip{background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.02));border-color:rgba(239,68,68,.3)}
+.vb.reduce{background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.02));border-color:rgba(245,158,11,.3)}
+.vh{font-family:'JetBrains Mono',monospace;font-size:.92rem;font-weight:700;margin-bottom:5px;line-height:1.4}
+.vm{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text2);line-height:1.7}
+
+/* Factor cards */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.fgrid.single{grid-template-columns:1fr}
+.fc{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;position:relative;overflow:hidden}
+.fc::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
+.fc.pass::before{background:var(--green)}.fc.fail::before{background:var(--red)}.fc.neutral::before{background:var(--yellow)}.fc.skipped::before{background:#334155}
+.fc .fn{font-family:'JetBrains Mono',monospace;font-size:.52rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1px}
+.fc .ft{font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;margin-bottom:3px}
+.fc .fv{font-family:'JetBrains Mono',monospace;font-size:.8rem;font-weight:700}
+.fc .fv.pass{color:var(--green)}.fc .fv.fail{color:var(--red)}.fc .fv.neutral{color:var(--yellow)}.fc .fv.skipped{color:#475569}
+.fc .fd{font-size:.6rem;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+/* WR bar */
+.wrb{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:12px}
+.wrb .wrl{display:flex;justify-content:space-between;margin-bottom:5px}
+.wrb .wrl span{font-family:'JetBrains Mono',monospace;font-size:.63rem;color:var(--muted)}
+.wrb .wrl .wrp{font-size:.88rem;font-weight:700;color:var(--text)}
+.wrb .bar{height:5px;background:var(--bg-input);border-radius:3px;overflow:hidden}
+.wrb .bar .fill{height:100%;border-radius:3px;transition:width .4s}
+
+/* Cards */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.card .ct-title{font-family:'JetBrains Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(30,45,66,.4)}
+.row:last-child{border-bottom:none}
+.row .rl{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--muted)}
+.row .rv{font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:600}
+.rv.long{color:var(--green)}.rv.short{color:var(--red)}.rv.tp{color:var(--green)}.rv.sl{color:var(--red)}
+
+/* Wall map */
+.wmap{margin-top:6px}
+.wm-item{display:flex;align-items:center;gap:8px;padding:3px 0;font-family:'JetBrains Mono',monospace;font-size:.68rem}
+.wm-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.wm-dot.put{background:var(--red)}.wm-dot.call{background:var(--green)}.wm-dot.es{background:var(--cyan)}
+.wm-strike{color:var(--text);font-weight:600;min-width:52px}
+.wm-dist{color:var(--muted);font-size:.6rem}
+.wm-tag{font-size:.55rem;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:auto}
+.wm-tag.nearest{background:rgba(6,182,212,.15);color:var(--cyan)}
+.wm-tag.es-tag{background:rgba(6,182,212,.1);color:var(--cyan)}
+
+/* Risk section */
+.risk-card{background:linear-gradient(135deg,rgba(249,115,22,.06),rgba(239,68,68,.03));border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.risk-card .ct-title{color:var(--orange)}
+.risk-item{display:flex;gap:8px;padding:4px 0;font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--text2);line-height:1.5}
+.risk-item .ri-icon{color:var(--orange);flex-shrink:0;font-size:.72rem}
+
+/* Gamma */
+.gn{font-family:'JetBrains Mono',monospace;font-size:.64rem;color:var(--text2);line-height:1.6}
+.gn .hl{color:var(--cyan);font-weight:500}
+
+@media(max-width:400px){.ct{padding:8px}.fg input{padding:8px;font-size:.82rem}.vh{font-size:.82rem}}
+</style>
+</head>
+<body>
+<div class="ct">
+  <div class="hdr">
+    <h1>Rinyo X 0DTE FLOW ANALYZER</h1>
+    <div class="sub">SPX/SPXW Options → ES Futures Signal</div>
+  </div>
+
+  <div class="form" id="form">
+    <div class="sec">Market Data — Required</div>
+    <div class="fg">
+      <label>ES Price</label>
+      <input type="number" id="esPrice" placeholder="5650.00" step="0.25">
+    </div>
+    <div class="fg">
+      <label>Put Volume</label>
+      <input type="number" id="putVol" placeholder="850000" step="1000">
+    </div>
+    <div class="fg">
+      <label>Call Volume</label>
+      <input type="number" id="callVol" placeholder="620000" step="1000">
+    </div>
+    <div class="fg" style="visibility:hidden"></div>
+
+    <div class="sec">Volatility <span class="opt">— optional, เสริม F1/F2/F4</span></div>
+    <div class="fg">
+      <label>Vol Settle (ATM IV) <span class="opt">F1</span></label>
+      <input type="number" id="volSettle" placeholder="28.5" step="0.1">
+    </div>
+    <div class="fg">
+      <label>Vol Chg <span class="opt">F2 F4</span></label>
+      <input type="number" id="volChg" placeholder="+1.20" step="0.01">
+    </div>
+
+    <div class="sec">Walls — หลาย strike คั่นด้วย , <span class="opt">optional, เสริม TP/SL</span></div>
+    <div class="fg">
+      <label>Put Wall(s)</label>
+      <input type="text" id="putWalls" placeholder="5600, 5580, 5560">
+    </div>
+    <div class="fg">
+      <label>Call Wall(s)</label>
+      <input type="text" id="callWalls" placeholder="5700, 5720, 5740">
+    </div>
+
+    <div class="sec">Additional <span class="opt">— optional</span></div>
+    <div class="fg">
+      <label>1SD Range (pts) <span class="opt">F4 — default 76</span></label>
+      <input type="number" id="sdRange" placeholder="76" step="1">
+    </div>
+    <div class="fg">
+      <label>SPX Yesterday (%) <span class="opt">F3</span></label>
+      <input type="number" id="spxYest" placeholder="-0.35" step="0.01">
+    </div>
+  </div>
+
+  <button class="btn btn-go" onclick="analyze()">ANALYZE</button>
+
+  <div class="res" id="results">
+    <div class="vb" id="vb"><div class="vh" id="vh"></div><div class="vm" id="vm"></div></div>
+    <div class="fgrid" id="fgrid"></div>
+    <div class="wrb" id="wrb">
+      <div class="wrl"><span>EST. WIN RATE</span><span class="wrp" id="wrp"></span></div>
+      <div class="bar"><div class="fill" id="wrfill"></div></div>
+    </div>
+    <div class="card" id="setupCard"><div class="ct-title">TRADE SETUP — ES FUTURES</div><div id="setupRows"></div></div>
+    <div class="card" id="wallCard"><div class="ct-title">WALL MAP</div><div class="wmap" id="wallMap"></div></div>
+    <div class="risk-card" id="riskCard"><div class="ct-title">⚠️ RISK / WEAKNESS</div><div id="riskItems"></div></div>
+    <div class="card" id="gammaCard"><div class="ct-title">GAMMA CONTEXT</div><div class="gn" id="gammaN"></div></div>
+    <button class="btn btn-reset" onclick="resetForm()">RESET</button>
+  </div>
+</div>
+
+<script>
+function pf(id){const v=document.getElementById(id).value.trim();return v===''?null:parseFloat(v)}
+function parseWalls(id){
+  const v=document.getElementById(id).value.trim();
+  if(!v)return[];
+  return v.split(/[,;\s]+/).map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n)&&n>0).sort((a,b)=>a-b);
+}
+
+function analyze(){
+  const es=pf('esPrice'), putV=pf('putVol'), callV=pf('callVol');
+  if(es===null||putV===null||callV===null){alert('ต้องกรอก ES Price, Put Volume, Call Volume');return}
+  if(putV+callV===0){alert('Put+Call Volume ต้องมากกว่า 0');return}
+
+  const volSettle=pf('volSettle'), volChg=pf('volChg');
+  const sdRange=pf('sdRange')||76;
+  const spxYest=pf('spxYest');
+  const putWalls=parseWalls('putWalls');
+  const callWalls=parseWalls('callWalls');
+
+  const hasVolSettle=volSettle!==null;
+  const hasVolChg=volChg!==null;
+  const hasSpxYest=spxYest!==null;
+  const hasPutWalls=putWalls.length>0;
+  const hasCallWalls=callWalls.length>0;
+  const hasWalls=hasPutWalls||hasCallWalls;
+
+  // PCR
+  const totalVol=putV+callV;
+  const pcr=putV/totalVol;
+
+  // Sort walls by distance from ES
+  const putWallsSorted=[...putWalls].sort((a,b)=>Math.abs(es-a)-Math.abs(es-b));
+  const callWallsSorted=[...callWalls].sort((a,b)=>Math.abs(es-a)-Math.abs(es-b));
+  const nearestPut=putWallsSorted.length>0?putWallsSorted[0]:null;
+  const nearestCall=callWallsSorted.length>0?callWallsSorted[0]:null;
+
+  // Distances
+  const distPut=nearestPut!==null?es-nearestPut:null;
+  const distCall=nearestCall!==null?nearestCall-es:null;
+
+  // === FACTORS ===
+  const factors=[];
+  const factorCards=[];
+  const risks=[];
+
+  // F1 — IV Regime
+  let f1_status='skipped', f1_regime='N/A';
+  if(hasVolSettle){
+    if(volSettle>35){f1_regime='HIGH VOL';f1_status='pass'}
+    else if(volSettle>=25){f1_regime='NORMAL';f1_status='neutral'}
+    else{f1_regime='LOW VOL';f1_status='fail'}
+    factors.push(f1_status);
+    if(f1_status==='fail') risks.push('Low Vol regime — MM Long Gamma dampening จะกด momentum ลด edge');
+  }
+  factorCards.push({num:'F1',title:'IV REGIME',value:f1_regime,detail:hasVolSettle?`Vol Settle: ${volSettle}`:'ไม่ได้ใส่ — skip',status:f1_status});
+
+  // F2 — Implied Skew (PCR + Vol Chg)
+  let f2_status, f2_skew, f2_dir='neutral';
+  if(pcr>0.6){f2_skew='BEARISH';f2_dir='short';f2_status=hasVolChg&&volChg>0?'pass':'neutral'}
+  else if(pcr<0.4){f2_skew='BULLISH';f2_dir='long';f2_status=hasVolChg&&volChg>0?'pass':'neutral'}
+  else{f2_skew='NEUTRAL';f2_status='neutral'}
+
+  if(hasVolChg&&volChg<=0)f2_status='fail';
+  if(!hasVolChg&&(pcr>0.6||pcr<0.4))f2_status='neutral';
+
+  factors.push(f2_status);
+  let f2detail=`PCR: ${pcr.toFixed(3)}`;
+  if(hasVolChg)f2detail+=` | VolChg: ${volChg>0?'+':''}${volChg.toFixed(2)}`;
+  else f2detail+=' | VolChg: N/A';
+  factorCards.push({num:'F2',title:'IMPLIED SKEW',value:f2_skew,detail:f2detail,status:f2_status});
+
+  if(pcr>=0.4&&pcr<=0.6) risks.push('PCR ใกล้ neutral ('+pcr.toFixed(2)+') — ไม่มี directional skew ชัด signal อ่อน');
+  if(hasVolChg&&volChg<=0) risks.push('Vol Chg ≤0 — ไม่มี vol momentum, MM ไม่ถูกบังคับ hedge');
+  if(!hasVolChg) risks.push('ไม่ได้ใส่ Vol Chg — F2 และ F4 ขาดข้อมูลสำคัญ conviction ลดลง');
+
+  // F3 — Realized Skew
+  let f3_status='skipped', f3_rs='N/A';
+  if(hasSpxYest){
+    if(spxYest<-0.5){f3_rs='NEGATIVE';f3_status=f2_dir==='short'?'pass':'neutral'}
+    else if(spxYest>0.5){f3_rs='POSITIVE';f3_status=f2_dir==='long'?'pass':'neutral'}
+    else{f3_rs='NEUTRAL';f3_status='neutral'}
+    factors.push(f3_status);
+
+    // RS vs IS conflict
+    if((f2_dir==='long'&&spxYest<-0.5)||(f2_dir==='short'&&spxYest>0.5)){
+      risks.push('RS สวนทาง IS — Realized Skew ขัดกับ Implied Skew ทำให้ signal conflicting');
+    }
+  }
+  factorCards.push({num:'F3',title:'REALIZED SKEW',value:f3_rs,detail:hasSpxYest?`SPX Yday: ${spxYest>0?'+':''}${spxYest.toFixed(2)}%`:'ไม่ได้ใส่ — skip',status:f3_status});
+
+  // F4 — Net Gamma
+  let f4_status, f4_gamma;
+  const sdNorm=76;
+  if(hasVolChg){
+    if(volChg>0&&sdRange>sdNorm*0.95){f4_gamma='SHORT GAMMA';f4_status='pass'}
+    else if(volChg<0&&sdRange<sdNorm*0.85){f4_gamma='LONG GAMMA';f4_status='fail'}
+    else if(volChg>0.5&&sdRange>sdNorm*0.8){f4_gamma='SHORT GAMMA';f4_status='pass'}
+    else if(volChg<=0){f4_gamma='LONG GAMMA';f4_status='fail'}
+    else{f4_gamma='NEUTRAL';f4_status='neutral'}
+  } else {
+    // No VolChg — estimate from 1SD only
+    if(sdRange>sdNorm*1.1){f4_gamma='SHORT GAMMA (est)';f4_status='neutral'}
+    else if(sdRange<sdNorm*0.85){f4_gamma='LONG GAMMA (est)';f4_status='neutral'}
+    else{f4_gamma='UNKNOWN';f4_status='skipped'}
+  }
+  if(f4_status!=='skipped')factors.push(f4_status);
+  factorCards.push({num:'F4',title:'NET GAMMA',value:f4_gamma,detail:`1SD: ${sdRange}pts (norm ${sdNorm})`,status:f4_status});
+
+  if(sdRange<sdNorm*0.85) risks.push(`1SD Range แคบ (${sdRange}pts vs norm ${sdNorm}) — expected move ต่ำ upside จำกัด`);
+
+  // === SCORING ===
+  const totalFactors=factors.length;
+  const passCount=factors.filter(f=>f==='pass').length;
+  const neutralCount=factors.filter(f=>f==='neutral').length;
+  const failCount=factors.filter(f=>f==='fail').length;
+  const score=passCount+neutralCount*0.5;
+
+  // Normalize score to 4-factor equivalent
+  const scoreNorm=totalFactors>0?(score/totalFactors)*4:0;
+
+  // === DIRECTION ===
+  let direction, dirClass;
+  if(pcr>0.55&&(!hasVolChg||volChg>0)){direction='Short';dirClass='short'}
+  else if(pcr<0.45&&(!hasVolChg||volChg>0)){direction='Long';dirClass='long'}
+  else if(pcr>0.55){direction='Short';dirClass='short'}
+  else if(pcr<0.45){direction='Long';dirClass='long'}
+  else{
+    if(hasSpxYest&&spxYest>0.3){direction='Long';dirClass='long'}
+    else if(hasSpxYest&&spxYest<-0.3){direction='Short';dirClass='short'}
+    else{direction='Neutral';dirClass='short'}
+  }
+
+  // === TP / SL ===
+  let tp=null, sl=null, rr=null, size=null, entryZone=es, tpLevel=null, slLevel=null, distToWall=null, nearestWallUsed=null;
+
+  if(hasWalls&&direction!=='Neutral'){
+    nearestWallUsed=direction==='Long'?nearestCall:nearestPut;
+    distToWall=direction==='Long'?distCall:distPut;
+
+    if(nearestWallUsed!==null&&distToWall!==null&&distToWall>0){
+      if(distToWall<30){
+        tp=Math.round(Math.min(25,distToWall*0.45));
+        sl=Math.round(Math.max(8,Math.min(10,tp/2.5)));
+        size='Full';
+      } else if(distToWall<=50){
+        tp=Math.round(Math.min(35,distToWall*0.4));
+        sl=Math.round(Math.max(10,Math.min(15,tp/2.5)));
+        size='Normal';
+      } else {
+        tp=Math.round(Math.min(40,distToWall*0.35));
+        sl=Math.round(Math.max(12,Math.min(15,tp/2)));
+        size='Reduce';
+      }
+      tp=Math.max(tp,15);sl=Math.max(sl,8);
+      rr=(tp/sl).toFixed(1);
+      tpLevel=direction==='Long'?es+tp:es-tp;
+      slLevel=direction==='Long'?es-sl:es+sl;
+
+      if(distToWall>50) risks.push(`ระยะไกลจาก Wall (${distToWall.toFixed(0)}pts) — price อาจไม่ถึง TP, ลด size`);
+    }
+  }
+
+  if(!hasWalls) risks.push('ไม่ได้ใส่ Wall — ไม่สามารถคำนวณ TP/SL ได้ ใช้เป็น directional signal เท่านั้น');
+
+  // Wall width risk
+  if(nearestPut!==null&&nearestCall!==null){
+    const wallWidth=nearestCall-nearestPut;
+    if(wallWidth>120) risks.push(`Put-Call Wall range กว้าง (${wallWidth.toFixed(0)}pts) — price อาจ chop ก่อนถึง zone`);
+  }
+
+  // Secondary wall check
+  if(direction==='Long'&&callWalls.length<2&&hasCallWalls) risks.push('Call Wall มีแค่ 1 ระดับ — ไม่มี secondary resistance backup');
+  if(direction==='Short'&&putWalls.length<2&&hasPutWalls) risks.push('Put Wall มีแค่ 1 ระดับ — ไม่มี secondary support backup');
+
+  // Incomplete data risk
+  const skippedCount=factorCards.filter(f=>f.status==='skipped').length;
+  if(skippedCount>=2) risks.push(`ขาดข้อมูล ${skippedCount} factors — verdict อิง incomplete data ควรเพิ่ม input`);
+
+  // === WIN RATE ===
+  let wr;
+  if(scoreNorm>=3)wr=68+Math.min(7,(scoreNorm-3)*7);
+  else if(scoreNorm>=2)wr=60+(scoreNorm-2)*8;
+  else wr=50+scoreNorm*5;
+
+  if(hasVolSettle&&f1_regime==='HIGH VOL'&&hasVolChg&&volChg>0)wr=Math.min(78,wr+5);
+  if(hasVolSettle&&f1_regime==='LOW VOL')wr=Math.max(45,wr-8);
+  if(totalFactors<3)wr=Math.max(50,wr-3); // penalty for missing data
+
+  wr=Math.round(wr);
+
+  // === VERDICT ===
+  let verdict, verdictClass, verdictEmoji;
+  if(scoreNorm>=2.5){verdict='ENTER';verdictClass='enter';verdictEmoji=direction==='Long'?'🟢':'🔴'}
+  else if(scoreNorm>=1.5){verdict='REDUCE';verdictClass='reduce';verdictEmoji='🟡'}
+  else{verdict='SKIP';verdictClass='skip';verdictEmoji='⛔'}
+
+  // === RENDER ===
+  const R=document.getElementById('results');R.classList.add('show');
+
+  // Verdict banner
+  const vb=document.getElementById('vb');vb.className='vb '+verdictClass;
+  let headline,meta;
+  if(verdict==='SKIP'){
+    const reason=hasVolSettle&&f1_regime==='LOW VOL'?'Low Vol — no edge'
+      :hasVolChg&&volChg<=0?'Vol Chg flat/neg — no momentum'
+      :'Factors insufficient — wait for setup';
+    headline=`${verdictEmoji} SKIP — ${reason}`;
+    meta=`PCR: ${pcr.toFixed(2)}${hasVolChg?' | VolChg: '+(volChg>0?'+':'')+volChg.toFixed(2):''}${hasVolSettle?' | '+f1_regime:''}<br>Factors: ${passCount}/${totalFactors} pass (${skippedCount} skipped)`;
+  } else if(tp!==null){
+    headline=`${verdictEmoji} ${direction} ES @ ${entryZone.toFixed(2)} | TP ${tpLevel.toFixed(2)} (+${tp}pts) | SL ${slLevel.toFixed(2)} (-${sl}pts)`;
+    meta=`${verdict} | WR ~${wr}% | R:R ${rr}:1 | Size: ${size} | Factors ${passCount}/${totalFactors}`;
+  } else {
+    headline=`${verdictEmoji} ${direction} ES @ ${entryZone.toFixed(2)} — No Wall → TP/SL N/A`;
+    meta=`${verdict} | WR ~${wr}% | Factors ${passCount}/${totalFactors}`;
+  }
+  document.getElementById('vh').innerHTML=headline;
+  document.getElementById('vm').innerHTML=meta;
+
+  // Factor cards
+  const activeCards=factorCards.filter(f=>f.status!=='skipped');
+  const skippedCards=factorCards.filter(f=>f.status==='skipped');
+  const allCards=[...activeCards,...skippedCards];
+  const grid=document.getElementById('fgrid');
+  grid.className='fgrid'+(allCards.length===1?' single':'');
+  grid.innerHTML=allCards.map(f=>`
+    <div class="fc ${f.status}">
+      <div class="fn">${f.num}</div>
+      <div class="ft">${f.title}</div>
+      <div class="fv ${f.status}">${f.value}</div>
+      <div class="fd">${f.detail}</div>
+    </div>`).join('');
+
+  // WR bar
+  document.getElementById('wrp').textContent=`~${wr}%`;
+  const fill=document.getElementById('wrfill');
+  fill.style.width=wr+'%';
+  fill.style.background=wr>=68?'var(--green)':wr>=60?'var(--yellow)':'var(--red)';
+
+  // Trade setup
+  const sc=document.getElementById('setupCard');
+  if(verdict==='SKIP'&&tp===null){sc.style.display='none'}
+  else{
+    sc.style.display='block';
+    const rows=[['Direction',direction+' ES',dirClass],['Entry Zone',entryZone.toFixed(2),'']];
+    if(tp!==null){
+      rows.push(['TP',`${tpLevel.toFixed(2)} (+${tp}pts)`,'tp']);
+      rows.push(['SL',`${slLevel.toFixed(2)} (-${sl}pts)`,'sl']);
+      rows.push(['R:R',`${rr}:1`,'']);
+      rows.push(['Size',size,'']);
+      rows.push(['Dist to Wall',`${distToWall.toFixed(0)}pts`,''
+      ]);
+    }
+    rows.push(['Conviction','Medium (Vol only)','']);
+    document.getElementById('setupRows').innerHTML=rows.map(r=>`<div class="row"><span class="rl">${r[0]}</span><span class="rv ${r[2]}">${r[1]}</span></div>`).join('');
+  }
+
+  // Wall map
+  const wc=document.getElementById('wallCard');
+  if(!hasWalls){wc.style.display='none'}
+  else{
+    wc.style.display='block';
+    let items=[];
+    // Put walls desc
+    const pwSorted=[...putWalls].sort((a,b)=>b-a);
+    pwSorted.forEach(w=>{
+      const d=es-w;
+      const isNearest=w===nearestPut;
+      items.push({strike:w,dist:d,type:'put',isNearest:isNearest&&direction==='Short',label:'PUT'});
+    });
+    // ES price marker
+    items.push({strike:es,dist:0,type:'es',isNearest:false,label:'ES'});
+    // Call walls asc
+    const cwSorted=[...callWalls].sort((a,b)=>a-b);
+    cwSorted.forEach(w=>{
+      const d=w-es;
+      items.push({strike:w,dist:d,type:'call',isNearest:w===nearestCall&&direction==='Long',label:'CALL'});
+    });
+    // Sort all by strike
+    items.sort((a,b)=>a.strike-b.strike);
+
+    document.getElementById('wallMap').innerHTML=items.map(it=>{
+      const dotCls=it.type==='es'?'es':it.type==='put'?'put':'call';
+      const distStr=it.type==='es'?'CURRENT PRICE':`${it.dist>0?'+':''}${it.dist.toFixed(0)}pts`;
+      const tag=it.type==='es'?'<span class="wm-tag es-tag">ES</span>'
+        :it.isNearest?'<span class="wm-tag nearest">NEAREST</span>':'';
+      return `<div class="wm-item">
+        <span class="wm-dot ${dotCls}"></span>
+        <span class="wm-strike">${it.strike.toFixed(0)}</span>
+        <span class="wm-dist">${it.label} ${distStr}</span>
+        ${tag}
+      </div>`;
+    }).join('');
+  }
+
+  // Risk / Weakness
+  const rc=document.getElementById('riskCard');
+  if(risks.length===0){rc.style.display='none'}
+  else{
+    rc.style.display='block';
+    document.getElementById('riskItems').innerHTML=risks.map(r=>`<div class="risk-item"><span class="ri-icon">▸</span><span>${r}</span></div>`).join('');
+  }
+
+  // Gamma context
+  const gc=document.getElementById('gammaCard');
+  let glines=[];
+  if(f4_gamma.includes('SHORT')){
+    glines.push('MM Short Gamma → <span class="hl">Momentum amplification</span> — delta-hedging flows เพิ่ม move ในทิศเดิม');
+    glines.push('Variance = negative function ของ OMM Gamma (<span class="hl">γ ≈ -0.497</span>)');
+  } else if(f4_gamma.includes('LONG')){
+    glines.push('MM Long Gamma → <span class="hl">Mean reversion dominates</span> — delta-hedging dampens move');
+    glines.push('Max gamma impact: <span class="hl">+3.3% daily / +6.4% per 30-min</span> — แต่ถูก dampen');
+  } else {
+    glines.push('Gamma regime ไม่ชัด — ต้องการ Vol Chg + 1SD Range เพื่อประเมิน');
+  }
+  glines.push('~70% intraday jumps เกิดใน <span class="hl">30 นาทีแรก</span> — early session มี edge สูง');
+  glines.push('Jump distribution <span class="hl">left-skewed</span> — Put Wall critical กว่า Call Wall ใน bearish regime');
+  document.getElementById('gammaN').innerHTML=glines.join('<br>');
+
+  R.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function resetForm(){
+  document.querySelectorAll('input').forEach(i=>i.value='');
+  document.getElementById('results').classList.remove('show');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Enter key navigation
+document.querySelectorAll('input').forEach(input=>{
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const inputs=Array.from(document.querySelectorAll('input'));
+      const idx=inputs.indexOf(e.target);
+      if(idx<inputs.length-1)inputs[idx+1].focus();
+      else analyze();
+    }
+  });
+});
+</script>
+</body>
+</html>
