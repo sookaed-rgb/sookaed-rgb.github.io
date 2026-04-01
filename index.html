@@ -10,13 +10,13 @@
 
     :root {
       --bg: #080c14;
-      --bg-card: #0f1623;
-      --bg-input: #151d2e;
-      --border: #1c2a3e;
+      --bg-card: rgba(15, 22, 35, 0.85);
+      --bg-input: rgba(21, 29, 46, 0.9);
+      --border: #334155;
       --border-focus: #3b82f6;
-      --text: #e2e8f0;
-      --text2: #94a3b8;
-      --muted: #5a6a80;
+      --text: #ffffff;
+      --text2: #f8fafc;
+      --muted: #cbd5e1;
       --green: #22c55e;
       --red: #ef4444;
       --yellow: #f59e0b;
@@ -32,22 +32,30 @@
     }
 
     html {
-      font-size: 14px;
-      -webkit-text-size-adjust: 100%
+      font-size: 17px;
+      -webkit-text-size-adjust: 100%;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     }
 
     body {
       font-family: 'IBM Plex Sans Thai', 'JetBrains Mono', sans-serif;
-      background: var(--bg);
+      background: #080c14;
       color: var(--text);
       min-height: 100vh;
-      line-height: 1.5
+      line-height: 1.5;
+      font-weight: 500;
     }
 
     .ct {
-      max-width: 540px;
-      margin: 0 auto;
-      padding: 12px
+      max-width: 580px;
+      margin: 20px auto;
+      padding: 20px;
+      background: rgba(8, 12, 20, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
 
     /* Header */
